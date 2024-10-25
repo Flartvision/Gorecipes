@@ -4,43 +4,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"gorecipes/src/recipes"
-
-	"fyne.io/fyne/v2"
+	//"fyne.io/fyne/v2"
 	//"gorecipes/src/file"
-
-	"fyne.io/fyne/v2/dialog"
+	//"fyne.io/fyne/v2/dialog"
 )
 
 type Storage struct {
 	Content []recipes.Recipes `json:"recipes"`
 }
 
-func (s *Storage) ToBytes(w fyne.Window) *[]byte {
+func (s *Storage) ToBytes() (*[]byte, error) {
 	file, err := json.Marshal(s)
 
 	if err != nil {
-		dialog.ShowError(err, w)
+		return nil, err
 	}
 	fmt.Println(file)
-	return &file
+	return &file, nil
 }
 
-func (s *Storage) AddRecipe(res recipes.Recipes, w fyne.Window) *Storage {
+func (s *Storage) AddRecipe(res recipes.Recipes) (*Storage, error) {
 	s.Content = append(s.Content, res)
 
-	data := s.ToBytes(w)
-
+	data, err := s.ToBytes()
+	if err != nil {
+		return nil, err
+	}
 	fmt.Println("AddRecipe: ", data, s.Content)
 
-	return s
+	return s, nil
 
 	//file.Wfile(*data, "recipes.json")
 
 }
 
-func NewStorage(w fyne.Window, d *[]byte) *Storage {
-
+func NewStorage(d *[]byte) *Storage {
 	var st Storage
+
 	err := json.Unmarshal(*d, &st)
 
 	if err != nil {

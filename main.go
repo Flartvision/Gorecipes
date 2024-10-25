@@ -14,24 +14,44 @@ import (
 	"gorecipes/src/file"
 	"gorecipes/src/storage"
 	"gorecipes/src/tabs"
-	"time"
+	//"time"
 )
 
 var content = []recipes.Recipes{}
+var tab2Con fyne.Container
 
 func main() {
-	a := app.New()
+	a := app.NewWithID("gorecipes")
 	wMain := a.NewWindow("Лисьи рецептики")
-	var data = []byte{}
-	st := storage.NewStorage(wMain, &data)
-	st = file.Rfile(wMain, st)
+	data := []byte{}
+	st := storage.NewStorage(&data)
 
+	var err error
+	// st = file.Rfile(wMain, st)
+
+	rootURI := a.Storage().RootURI().String() + "/recipes.json"
+	data, err = file.Rfile(rootURI)
+	if err != nil {
+		dialog.ShowError(err, wMain)
+
+	}
+
+	st = storage.NewStorage(&data)
+	// if err != nil {
+	// 	dialog.ShowError(err, wMain)
+	//
+	// }
+
+	dialog.ShowInformation("Корневой путь программы: ", rootURI, wMain)
 	fmt.Println("Storage после добавления рецепта: ", st)
-
+	//
 	loadStor := widget.NewButton("Загрузить данные", func() {
-		st = file.Rfile(wMain, st)
-		fmt.Println(data)
-		//tab2Con = *tabs.SpavnList(st)
+		data, err = file.Rfile(rootURI)
+		st = storage.NewStorage(&data)
+		tabs.SpavnList(st)
+		fmt.Println(st)
+		tab2Con = *tabs.SpavnList(st)
+		tab2Con.Show()
 	})
 
 	btnFold := widget.NewButton("Выбрать папку", func() {
@@ -52,6 +72,11 @@ func main() {
 	})
 
 	saveButton := widget.NewButton("Сохранить файл", func() {
+		data, err := st.ToBytes()
+		if err != nil {
+			dialog.ShowError(err, wMain)
+		}
+		file.Wfile(*data, rootURI)
 		dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
 			if err != nil {
 				return
@@ -60,7 +85,7 @@ func main() {
 				return
 			}
 			defer uc.Close()
-			_, err = uc.Write(*st.ToBytes(wMain))
+			_, err = uc.Write(*data)
 			if err != nil {
 				dialog.ShowError(err, wMain)
 			}
@@ -70,6 +95,7 @@ func main() {
 	tab1 := container.NewVBox(btnFold, saveButton, loadStor)
 	tab21 := container.NewVBox(
 		widget.NewButton("Добавить рецепт", func() { AddRecipe(wMain, a, st) }),
+		&tab2Con,
 	)
 	tab2 := container.NewVScroll(tab21)
 
@@ -83,19 +109,19 @@ func main() {
 	tabes.SetTabLocation(container.TabLocationBottom)
 
 	wMain.SetContent(tabes)
-	go func() {
-		for range time.Tick(time.Minute / 10) {
-			for range st.Content {
-				tab21.Add(container.NewVBox(tabs.SpavnList(st)))
-				tab21.Refresh()
-			}
-		}
-	}()
+	// go func() {
+	// 	for range time.Tick(time.Minute / 10) {
+	// 		for range st.Content {
+	// 			tab21.Add(container.NewVBox(tabs.SpavnList(st)))
+	// 			tab21.Refresh()
+	// 		}
+	// 	}
+	// }()
 
 	wMain.ShowAndRun()
 }
 
-func AddRecipe(w fyne.Window, a fyne.App, st *storage.Storage) storage.Storage {
+func AddRecipe(w fyne.Window, a fyne.App, st *storage.Storage) {
 	name := widget.NewEntry()
 	description := widget.NewMultiLineEntry()
 
@@ -103,7 +129,10 @@ func AddRecipe(w fyne.Window, a fyne.App, st *storage.Storage) storage.Storage {
 		MyREcipe := recipes.NewRecipe(name.Text, description.Text, "")
 		fmt.Println("MyRecipe: ", MyREcipe)
 
-		st = st.AddRecipe(*MyREcipe, w)
+		st, err := st.AddRecipe(*MyREcipe)
+		if err != nil {
+			dialog.ShowError(err, w)
+		}
 		fmt.Println("Storage после добавления рецепта: ", st)
 
 	})
@@ -113,6 +142,5 @@ func AddRecipe(w fyne.Window, a fyne.App, st *storage.Storage) storage.Storage {
 	w2 := a.NewWindow("Добавление рецепта")
 	w2.SetContent(content)
 	w2.Show()
-	return *st
 
 }

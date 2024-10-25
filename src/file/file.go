@@ -11,26 +11,48 @@ import (
 	st "gorecipes/src/storage"
 )
 
-func fileURI() fyne.URI {
-	return storage.NewFileURI("recipes.json")
+func fileURI(URI string) fyne.URI {
+	return storage.NewFileURI(URI)
 }
 
 func Wfile(data []byte, URI string) error {
-	fileURI := storage.NewFileURI(URI)
-	file, err := storage.Writer(fileURI)
-	fmt.Println("Wfile: ", fileURI, file)
-	defer file.Close()
+	fileURI, err := storage.ParseURI(URI)
 	if err != nil {
 		return err
 	}
+	file, err := storage.Writer(fileURI)
+	if err != nil {
+		return err
+	}
+	fmt.Println("WfileURI: ", fileURI)
+	defer file.Close()
+	fmt.Println("Wfile file:", file)
+
 	file.Write(data)
 	return err
 }
 
-func Rfile(w fyne.Window, stor *st.Storage) *st.Storage {
+func Rfile(URI string) ([]byte, error) {
+	var err error
+	fileURI, err := storage.ParseURI(URI)
+	if err != nil {
+		return nil, err
+	}
+	file, err := storage.Reader(fileURI)
+	if err != nil {
+		return nil, err
+	}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
+func GuiReader(w fyne.Window, stor *st.Storage) {
 	dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil {
+
 			dialog.ShowError(err, w)
 		}
 		if reader == nil {
@@ -40,17 +62,9 @@ func Rfile(w fyne.Window, stor *st.Storage) *st.Storage {
 		if err != nil {
 			dialog.ShowError(err, w)
 		}
-		stor = st.NewStorage(w, &data)
+		stor = st.NewStorage(&data)
 		fmt.Println("База данных после загрузки:", stor)
 
 	}, w).Show()
 
-	return stor
 }
-
-/*func callFile() fyne.URI {
-	d, err := dialog.NewFileOpen()
-	}, w).Show()
-		dialog.ShowError(err)
-	}
-}*/
